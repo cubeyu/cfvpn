@@ -1,7 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/connection_provider.dart';
+import '../services/autostart_service.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  bool _autoStart = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAutoStartStatus();
+  }
+
+  Future<void> _loadAutoStartStatus() async {
+    final enabled = AutoStartService.isAutoStartEnabled();
+    setState(() {
+      _autoStart = enabled;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,17 +39,32 @@ class SettingsPage extends StatelessWidget {
           _SettingSwitch(
             title: '开机自启',
             subtitle: '系统启动时自动连接',
-            value: false,
-            onChanged: (value) {
-              // TODO: 实现开机自启动功能
+            value: _autoStart,
+            onChanged: (value) async {
+              final success = await AutoStartService.setAutoStart(value);
+              if (success) {
+                setState(() {
+                  _autoStart = value;
+                });
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('设置开机自启动失败'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }
             },
           ),
           _SettingSwitch(
-            title: '自动重连',
-            subtitle: '断开连接时自动重连',
-            value: true,
+            title: '自动连接',
+            subtitle: '启动应用时自动连接',
+            value: Provider.of<ConnectionProvider>(context).autoConnect,
             onChanged: (value) {
-              // TODO: 实现自动重连功能
+              Provider.of<ConnectionProvider>(context, listen: false)
+                  .setAutoConnect(value);
             },
           ),
           const Divider(),
@@ -53,7 +91,7 @@ class SettingsPage extends StatelessWidget {
           const _SectionHeader(title: '关于'),
           _SettingTile(
             title: '当前版本',
-            subtitle: 'v1.0.0',
+            subtitle: 'v1.0.1',
             onTap: () {},
           ),
           _SettingTile(
@@ -182,4 +220,4 @@ class _SettingSwitchState extends State<_SettingSwitch> {
       },
     );
   }
-} 
+}

@@ -113,6 +113,7 @@ void WindowClassRegistrar::UnregisterWindowClass() {
 
 Win32Window::Win32Window() {
   ++g_active_window_count;
+  ZeroMemory(&tray_icon_data_, sizeof(NOTIFYICONDATA));
 }
 
 Win32Window::~Win32Window() {
@@ -121,36 +122,38 @@ Win32Window::~Win32Window() {
 }
 
 bool Win32Window::Create(const std::wstring& title,
-                         const Point& origin,
-                         const Size& size) {
+                        const Point& origin,
+                        const Size& size) {
   Destroy();
 
   const wchar_t* window_class =
       WindowClassRegistrar::GetInstance()->GetWindowClass();
-
-  const POINT target_point = {static_cast<LONG>(origin.x),
-                              static_cast<LONG>(origin.y)};
-  HMONITOR monitor = MonitorFromPoint(target_point, MONITOR_DEFAULTTONEAREST);
-  UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
-  double scale_factor = dpi / 96.0;
-
   HWND window = CreateWindow(
-      window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
-      Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
-      Scale(size.width, scale_factor), Scale(size.height, scale_factor),
-      nullptr, nullptr, GetModuleHandle(nullptr), this);
-
+      window_class,
+      title.c_str(),
+      WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+      origin.x,
+      origin.y,
+      700,  // Fixed window width
+      1400,
+      nullptr,
+      nullptr,
+      GetModuleHandle(nullptr),
+      this);
   if (!window) {
     return false;
   }
 
   UpdateTheme(window);
 
+  // Add tray icon when window is created
+  AddTrayIcon();
+
   return OnCreate();
 }
 
 bool Win32Window::Show() {
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  return ::ShowWindow(window_handle_, SW_SHOWNORMAL);
 }
 
 // static
@@ -187,6 +190,15 @@ Win32Window::MessageHandler(HWND hwnd,
       }
       return 0;
 
+    case WM_CLOSE:
+      ShowWindow(false);
+      AddTrayIcon();
+      return 0;
+
+    case WM_USER + 1:
+      HandleTrayMessage(wparam, lparam);
+      return 0;
+
     case WM_DPICHANGED: {
       auto newRectSize = reinterpret_cast<RECT*>(lparam);
       LONG newWidth = newRectSize->right - newRectSize->left;
@@ -221,10 +233,73 @@ Win32Window::MessageHandler(HWND hwnd,
   return DefWindowProc(window_handle_, message, wparam, lparam);
 }
 
+void Win32Window::ShowWindow(bool show) {
+  if (window_handle_) {
+    ::ShowWindow(window_handle_, show ? SW_SHOW : SW_HIDE);
+  }
+}
+
+void Win32Window::AddTrayIcon() {
+  if (!window_handle_ || is_tray_icon_added_) return;
+
+  tray_icon_data_.cbSize = sizeof(NOTIFYICONDATA);
+  tray_icon_data_.hWnd = window_handle_;
+  tray_icon_data_.uID = 1;
+  tray_icon_data_.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+  tray_icon_data_.uCallbackMessage = WM_USER + 1;
+  tray_icon_data_.hIcon = (HICON)LoadImage(GetModuleHandle(nullptr),
+                                          MAKEINTRESOURCE(IDI_APP_ICON),
+                                          IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
+  wcscpy_s(tray_icon_data_.szTip, L"CFVPN");
+
+  Shell_NotifyIcon(NIM_ADD, &tray_icon_data_);
+  is_tray_icon_added_ = true;
+}
+
+void Win32Window::RemoveTrayIcon() {
+  if (!is_tray_icon_added_) return;
+
+  Shell_NotifyIcon(NIM_DELETE, &tray_icon_data_);
+  is_tray_icon_added_ = false;
+}
+
+void Win32Window::HandleTrayMessage(WPARAM wparam, LPARAM lparam) {
+  if (wparam != 1) return;
+
+  switch (lparam) {
+    case WM_LBUTTONUP:
+      ShowWindow(true);
+      ::SetForegroundWindow(window_handle_);
+      break;
+    case WM_RBUTTONUP: {
+      POINT pt;
+      GetCursorPos(&pt);
+      HMENU menu = CreatePopupMenu();
+      AppendMenu(menu, MF_STRING, 1, L"Show");
+      AppendMenu(menu, MF_STRING, 2, L"Exit");
+      SetForegroundWindow(window_handle_);
+      int cmd = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY,
+                              pt.x, pt.y, 0, window_handle_, nullptr);
+      DestroyMenu(menu);
+
+      if (cmd == 1) {
+        ShowWindow(true);
+        ::SetForegroundWindow(window_handle_);
+      } else if (cmd == 2) {
+        RemoveTrayIcon();
+        DestroyWindow(window_handle_);
+        PostQuitMessage(0);
+      }
+      break;
+    }
+  }
+}
+
 void Win32Window::Destroy() {
   OnDestroy();
 
   if (window_handle_) {
+    RemoveTrayIcon();
     DestroyWindow(window_handle_);
     window_handle_ = nullptr;
   }

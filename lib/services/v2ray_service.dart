@@ -5,16 +5,17 @@ import 'package:path/path.dart' as path;
 class V2RayService {
   static Process? _v2rayProcess;
   static bool _isRunning = false;
-
-  static Future<String> _getV2RayPath() async {
+  static Future<String> getExecutablePath(String executableName) async {
     if (Platform.isWindows) {
       final exePath = Platform.resolvedExecutable;
       final directory = path.dirname(exePath);
-      return path.join(directory, 'v2ray', 'v2ray.exe');
+      return path.join(directory, executableName);
     }
     throw 'Unsupported platform';
   }
-
+  static Future<String> _getV2RayPath() async {
+    return getExecutablePath(path.join('v2ray', 'v2ray.exe'));
+  }
   static Future<void> generateConfig({
     required String serverIp,
     required int serverPort,
@@ -331,4 +332,4 @@ class V2RayService {
   }
 
   static bool get isRunning => _isRunning;
-} 
+}

@@ -27,6 +27,17 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
         ),
         home: const MainScreen(),
+        builder: (context, child) {
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              size: Size(
+                MediaQuery.of(context).size.width,
+                MediaQuery.of(context).size.height,
+              ),
+            ),
+            child: child!,
+          );
+        },
       ),
     );
   }
@@ -76,4 +87,4 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
-} 
+}

@@ -2,32 +2,26 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:path/path.dart' as path;
 import '../models/server_model.dart';
+import './v2ray_service.dart';
 
 class CloudflareTestService {
   static Future<String> _getExecutablePath() async {
-    if (Platform.isWindows) {
-      // 获取应用程序可执行文件所在目录
-      final exePath = Platform.resolvedExecutable;
-      final directory = path.dirname(exePath);
-      return path.join(directory, 'cftest.exe');
-    }
-    throw 'Unsupported platform';
+    return V2RayService.getExecutablePath('cftest.exe');
   }
-
   static Future<List<ServerModel>> testServers({
     required int count,
     required int maxLatency,
     required int speed,
-    String location = 'HKG',
+    String location = 'HKG', required int testCount,
   }) async {
     final exePath = await _getExecutablePath();
     final resultPath = path.join(path.dirname(exePath), 'result.json');
     final ipFilePath = path.join(path.dirname(exePath), 'ip.txt');
     
     // 添加调试信息
-    print('Executable path: $exePath');
-    print('IP file path: $ipFilePath');
-    print('Result path: $resultPath');
+    // print('Executable path: $exePath');
+    // print('IP file path: $ipFilePath');
+    // print('Result path: $resultPath');
     
     // 检查文件是否存在
     if (!await File(exePath).exists()) {
@@ -40,14 +34,14 @@ class CloudflareTestService {
     try {
       final process = await Process.start(
         exePath,
-        ['-f', ipFilePath, '-cfcolo', location, '-dn', '$count', '-tl', '$maxLatency', '-sl', '$speed'],
+        ['-f', ipFilePath, '-cfcolo', location, '-dn', '$count', '-tl', '$maxLatency', '-sl', '$speed', '-dm', '$testCount'],
         workingDirectory: path.dirname(exePath),  // 设置工作目录
         mode: ProcessStartMode.inheritStdio,      // 继承标准输入输出
       );
 
       // 等待进程完成
       final exitCode = await process.exitCode;
-      print('Process exit code: $exitCode');
+      // print('Process exit code: $exitCode');
 
       if (exitCode != 0) {
         throw 'Process exited with code $exitCode';
@@ -60,7 +54,7 @@ class CloudflareTestService {
       }
 
       final String jsonContent = await resultFile.readAsString();
-      print('Result content: $jsonContent');  // 打印结果内容
+      // print('Result content: $jsonContent');  // 打印结果内容
       
       final List<dynamic> results = jsonDecode(jsonContent);
       
@@ -86,4 +80,4 @@ class CloudflareTestService {
       throw 'Failed to test servers: $e';
     }
   }
-} 
+}

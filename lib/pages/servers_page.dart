@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:proxy_app/services/v2ray_service.dart';
+import 'package:path/path.dart' as path;
+import 'dart:io';
+import 'dart:convert';
 import '../models/server_model.dart';
 import '../providers/connection_provider.dart';
 import '../providers/server_provider.dart';
@@ -14,28 +18,31 @@ class ServersPage extends StatefulWidget {
 }
 
 class _ServersPageState extends State<ServersPage> {
-  // 添加排序状态
   bool _isAscending = true;
 
-  void _addServer(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('新增服务器'),
-        content: AddServerDialog(),
-      ),
-    );
+  static Future<String> _getExecutablePath() async {
+    return V2RayService.getExecutablePath('cftest.exe');
   }
 
   void _addCloudflareServer(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('从 Cloudflare 添加服务器'),
+        title: const Text('从Cloudflare添加'),
         content: const CloudflareTestDialog(),
       ),
     );
   }
+
+  // void _addServer(BuildContext context) {
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: const Text('新增服务器'),
+  //       content: const AddServerDialog(),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -48,15 +55,73 @@ class _ServersPageState extends State<ServersPage> {
           IconButton(
             icon: const Icon(Icons.speed),
             tooltip: '测试延迟',
-            onPressed: () {
+            onPressed: () async {
               final serverProvider = context.read<ServerProvider>();
-              // 模拟测试延迟
-              for (var server in serverProvider.servers) {
-                serverProvider.updatePing(server.id, 50 + (DateTime.now().millisecond % 200));
+              // 收集所有服务器的IP地址
+              final ips = serverProvider.servers.map((server) => server.ip).join(',');
+              if (ips.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('没有可测试的服务器')),
+                );
+                return;
               }
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('延迟测试完成')),
-              );
+
+              try {
+                // 执行测试命令
+                // 获取应用程序的可执行文件目录
+                final exePath = await _getExecutablePath();
+                
+                final process = await Process.start(
+                  exePath,
+                  ['-ip', ips],
+                  workingDirectory: path.dirname(exePath),
+                  mode: ProcessStartMode.inheritStdio,      // 继承标准输入输出
+                );
+
+                // 等待进程完成
+                final exitCode = await process.exitCode;
+                if (exitCode != 0) {
+                  throw '测试进程退出，错误代码：$exitCode';
+                }
+
+                // 读取测试结果
+                final resultFile = File('result.json');
+                if (!await resultFile.exists()) {
+                  throw '未找到测试结果文件';
+                }
+
+                final String jsonContent = await resultFile.readAsString();
+                final List<dynamic> results = jsonDecode(jsonContent);
+
+                // 更新服务器延迟
+                for (var result in results) {
+                  final ip = result['ip'];
+                  final delay = result['delay'];
+                  final server = serverProvider.servers.firstWhere(
+                    (server) => server.ip == ip,
+                    orElse: () => ServerModel(
+                      id: '',
+                      name: '',
+                      location: '',
+                      ip: '',
+                      port: 0,
+                    ),
+                  );
+                  if (server.id.isNotEmpty) {
+                    serverProvider.updatePing(server.id, delay);
+                  }
+                }
+
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('延迟测试完成')),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('测试失败: $e')),
+                );
+              }
             },
           ),
           // 排序按钮
@@ -69,17 +134,18 @@ class _ServersPageState extends State<ServersPage> {
               });
             },
           ),
-          // 新增服务器按钮
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: '新增服务器',
-            onPressed: () => _addServer(context),
-          ),
+          // 从cloudflare添加按钮
           IconButton(
             icon: const Icon(Icons.cloud),
-            tooltip: '从 Cloudflare 添加',
+            tooltip: '从Cloudflare添加',
             onPressed: () => _addCloudflareServer(context),
           ),
+          // 新增服务器按钮
+          // IconButton(
+          //   icon: const Icon(Icons.add),
+          //   tooltip: '新增服务器',
+          //   onPressed: () => _addServer(context),
+          // ),
         ],
       ),
       body: Consumer2<ServerProvider, ConnectionProvider>(
@@ -254,4 +320,4 @@ class ServerListItem extends StatelessWidget {
       }),
     );
   }
-} 
+}

@@ -16,6 +16,7 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
   final _countController = TextEditingController(text: '1');
   final _latencyController = TextEditingController(text: '300');
   final _speedController = TextEditingController(text: '1');
+  final _testCountController = TextEditingController(text: '50');
   bool _isLoading = false;
 
   @override
@@ -23,6 +24,7 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
     _countController.dispose();
     _latencyController.dispose();
     _speedController.dispose();
+    _testCountController.dispose();
     super.dispose();
   }
 
@@ -65,6 +67,7 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
         count: int.parse(_countController.text),
         maxLatency: int.parse(_latencyController.text),
         speed: int.parse(_speedController.text),
+        testCount: int.parse(_testCountController.text),
       );
 
       if (!mounted) return;
@@ -102,8 +105,8 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
           TextFormField(
             controller: _countController,
             decoration: const InputDecoration(
-              labelText: '新增数量',
-              helperText: '要添加的服务器数量',
+              labelText: '新增数量（要添加的服务器数量）',
+              helperText: '',
             ),
             keyboardType: TextInputType.number,
             validator: (value) {
@@ -116,8 +119,8 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
           TextFormField(
             controller: _latencyController,
             decoration: const InputDecoration(
-              labelText: '延迟上限',
-              helperText: '最大延迟(ms)',
+              labelText: '延迟上限（最大延迟(ms)）',
+              helperText: '',
             ),
             keyboardType: TextInputType.number,
             validator: (value) {
@@ -130,14 +133,28 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
           TextFormField(
             controller: _speedController,
             decoration: const InputDecoration(
-              labelText: '最低网速',
-              helperText: '最低网速要求(MB/s)',
+              labelText: '最低网速（最低网速要求(MB/s)）',
+              helperText: '',
             ),
             keyboardType: TextInputType.number,
             validator: (value) {
               if (value == null || value.isEmpty) return '请输入网速要求';
               if (int.tryParse(value) == null) return '请输入有效数字';
               if (int.parse(value) < 1) return '网速必须大于0';
+              return null;
+            },
+          ),
+          TextFormField(
+            controller: _testCountController,
+            decoration: const InputDecoration(
+              labelText: '延迟测试数量（延迟测试符合的ip个数）',
+              helperText: '',
+            ),
+            keyboardType: TextInputType.number,
+            validator: (value) {
+              if (value == null || value.isEmpty) return '请输入测试次数';
+              if (int.tryParse(value) == null) return '请输入有效数字';
+              if (int.parse(value) < 1) return '测试次数必须大于0';
               return null;
             },
           ),
@@ -166,4 +183,4 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
       ),
     );
   }
-} 
+}

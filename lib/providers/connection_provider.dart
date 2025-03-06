@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/server_model.dart';
 import '../services/v2ray_service.dart';
 import '../services/proxy_service.dart';
@@ -6,10 +8,53 @@ import '../services/proxy_service.dart';
 class ConnectionProvider with ChangeNotifier {
   bool _isConnected = false;
   ServerModel? _currentServer;
-  
+  final String _storageKey = 'current_server';
+  bool _autoConnect = false;
   bool get isConnected => _isConnected;
   ServerModel? get currentServer => _currentServer;
-
+  bool get autoConnect => _autoConnect;
+  
+  ConnectionProvider() {
+    _loadSettings();
+    _loadCurrentServer();
+  }
+  
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    _autoConnect = prefs.getBool('auto_connect') ?? false;
+    if (_autoConnect) {
+      connect();
+    }
+  }
+  
+  Future<void> setAutoConnect(bool value) async {
+    _autoConnect = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('auto_connect', value);
+    notifyListeners();
+  }
+  
+  Future<void> _loadCurrentServer() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? serverJson = prefs.getString(_storageKey);
+    
+    if (serverJson != null) {
+      _currentServer = ServerModel.fromJson(Map<String, dynamic>.from(
+        Map.castFrom(json.decode(serverJson))
+      ));
+      notifyListeners();
+    }
+  }
+  
+  Future<void> _saveCurrentServer() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_currentServer != null) {
+      await prefs.setString(_storageKey, json.encode(_currentServer!.toJson()));
+    } else {
+      await prefs.remove(_storageKey);
+    }
+  }
+  
   Future<void> connect() async {
     if (_currentServer != null) {
       final success = await V2RayService.start(
@@ -29,16 +74,17 @@ class ConnectionProvider with ChangeNotifier {
       }
     }
   }
-
+  
   Future<void> disconnect() async {
     await V2RayService.stop();
     await ProxyService.disableSystemProxy();
     _isConnected = false;
     notifyListeners();
   }
-
-  void setCurrentServer(ServerModel? server) {
+  
+  Future<void> setCurrentServer(ServerModel? server) async {
     _currentServer = server;
+    await _saveCurrentServer();
     notifyListeners();
   }
-} 
+}
