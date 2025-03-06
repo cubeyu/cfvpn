@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 import 'pages/home_page.dart';
 import 'pages/servers_page.dart';
 import 'pages/settings_page.dart';
@@ -7,6 +8,22 @@ import 'providers/connection_provider.dart';
 import 'providers/server_provider.dart';
 
 void main() {
+  // 检查是否已有实例运行
+  final lockFile = File('app.lock');
+  try {
+    // 尝试创建锁文件
+    lockFile.createSync();
+    // 注册退出时删除锁文件
+    ProcessSignal.sigint.watch().listen((_) {
+      lockFile.deleteSync();
+      exit(0);
+    });
+  } catch (e) {
+    // 如果文件已存在，说明已有实例在运行
+    print('应用程序已在运行');
+    exit(0);
+  }
+
   runApp(const MyApp());
 }
 
@@ -28,15 +45,7 @@ class MyApp extends StatelessWidget {
         ),
         home: const MainScreen(),
         builder: (context, child) {
-          return MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              size: Size(
-                MediaQuery.of(context).size.width,
-                MediaQuery.of(context).size.height,
-              ),
-            ),
-            child: child!,
-          );
+          return child!;
         },
       ),
     );

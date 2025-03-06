@@ -1,3 +1,7 @@
+// Copyright 2013 The Flutter Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
@@ -7,14 +11,23 @@
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
-  // Attach to console when present (e.g., 'flutter run') or create a
-  // new console when running with a debugger.
+  HANDLE hMutex = CreateMutex(NULL, TRUE, L"Global\\CFVPNMutex");
+  if (GetLastError() == ERROR_ALREADY_EXISTS) {
+    HWND hwnd = FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", L"Proxy App");
+    if (hwnd != NULL) {
+      if (IsIconic(hwnd)) {
+        ShowWindow(hwnd, SW_RESTORE);
+      }
+      SetForegroundWindow(hwnd);
+    }
+    CloseHandle(hMutex);
+    return EXIT_SUCCESS;
+  }
+
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
     CreateAndAttachConsole();
   }
 
-  // Initialize COM, so that it is available for use in the library and/or
-  // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
   flutter::DartProject project(L"data");
@@ -27,7 +40,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"proxy_app", origin, size)) {
+  if (!window.Create(L"Proxy App", origin, size)) {
+    CloseHandle(hMutex);
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
@@ -38,6 +52,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     ::DispatchMessage(&msg);
   }
 
+  CloseHandle(hMutex);
   ::CoUninitialize();
   return EXIT_SUCCESS;
 }
