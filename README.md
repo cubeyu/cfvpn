@@ -13,5 +13,5 @@
 5. 点击节点，切换到首页，点击 **连接** 按钮即可。
 
 # 界面如图：
-![屏幕截图 2025-03-07 051737](https://github.com/user-attachments/assets/3f05041c-028a-474f-8bc0-24ce089bc668)
-![屏幕截图 2025-03-07 052509](https://github.com/user-attachments/assets/d34a42dd-07d5-47c8-af0a-8383477e88f1)
+![t6br0-jtfbj](https://github.com/user-attachments/assets/c43ed6b1-9936-4b23-aea9-1ae56eddff6e)
+![tpb5f-skyqm](https://github.com/user-attachments/assets/2e73f78e-b808-4f82-9edd-b87fa5bccdbd)
