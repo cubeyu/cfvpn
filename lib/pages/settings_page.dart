@@ -67,6 +67,15 @@ class _SettingsPageState extends State<SettingsPage> {
                   .setAutoConnect(value);
             },
           ),
+          _SettingSwitch(
+            title: 'TUN 模式',
+            subtitle: '使用 TUN 虚拟网卡实现全局代理',
+            value: Provider.of<ConnectionProvider>(context).tunMode,
+            onChanged: (value) {
+              Provider.of<ConnectionProvider>(context, listen: false)
+                  .setTunMode(value);
+            },
+          ),
           const Divider(),
           
           const _SectionHeader(title: '网络设置'),

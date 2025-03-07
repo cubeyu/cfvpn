@@ -21,42 +21,64 @@ class V2RayService {
     required int serverPort,
     int localPort = 7898,  // SOCKS5 代理端口
     int httpPort = 7899,   // HTTP 代理端口
+    bool tunMode = false,   // TUN 模式
   }) async {
+    print('v2ray print: generateConfig called with tunMode: $tunMode');
     serverPort = 443;//暂时写死443
+    final v2rayPath = await _getV2RayPath();
     final configPath = path.join(
-      path.dirname(Platform.resolvedExecutable),
-      'v2ray',
+      path.dirname(v2rayPath),
       'config.json'
     );
 
-    final config = {
-      "inbounds": [
-        {
-          "port": localPort,
-          "protocol": "socks",
-          "settings": {
-            "udp": true
-          }
-        },
-        {
-          "tag": "http",
-          "port": httpPort,
-          "protocol": "http",
-          "sniffing": {
-            "enabled": true,
-            "destOverride": [
-              "http",
-              "tls"
-            ],
-            "routeOnly": false
-          },
-          "settings": {
-            "auth": "noauth",
-            "udp": true,
-            "allowTransparent": false
-          }
+    final inbounds = [];
+
+    if (!tunMode) {
+      inbounds.add({
+        "port": localPort,
+        "protocol": "socks",
+        "settings": {
+          "auth": "noauth",
+          "udp": true
         }
-      ],
+      });
+      inbounds.add({
+        "tag": "http",
+        "port": httpPort,
+        "protocol": "http",
+        "sniffing": {
+          "enabled": true,
+          "destOverride": [
+            "http",
+            "tls"
+          ],
+          "routeOnly": false
+        },
+        "settings": {
+          "auth": "noauth",
+          "udp": true,
+          "allowTransparent": false
+        }
+      });
+    } else {
+      print('v2ray print: 开启TUN模式，tunMode值为: $tunMode');
+      inbounds.add({
+        "port": 7900,
+        "protocol": "dokodemo-door",
+        "settings": {
+          "network": "tcp,udp",
+          "followRedirect": true
+        },
+        "sniffing": {
+          "enabled": true,
+          "destOverride": ["http", "tls"],
+          "routeOnly": false
+        }
+      });
+    }
+
+    final config = {
+      "inbounds": inbounds,
       "outbounds": [
         {
           "tag": "proxy",
@@ -241,11 +263,12 @@ class V2RayService {
       return false;
     }
   }
-
   static Future<bool> start({
     required String serverIp,
     required int serverPort,
+    bool tunMode = false,
   }) async {
+    print('v2ray print: start方法被调用，tunMode值为: $tunMode');
     if (_isRunning) {
       await stop();  // 确保先停止旧进程
     }
@@ -257,7 +280,7 @@ class V2RayService {
       }
 
       // 生成配置文件
-      await generateConfig(serverIp: serverIp, serverPort: serverPort);
+      await generateConfig(serverIp: serverIp, serverPort: serverPort, tunMode: tunMode);
 
       final v2rayPath = await _getV2RayPath();
       if (!await File(v2rayPath).exists()) {
@@ -269,6 +292,7 @@ class V2RayService {
         v2rayPath,
         ['run'],
         workingDirectory: path.dirname(v2rayPath),
+        runInShell: true  // 在shell中运行以获取更高权限
       );
 
       // 等待一段时间检查进程是否正常运行
