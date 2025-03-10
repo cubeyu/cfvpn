@@ -1,0 +1,137 @@
+{
+    "log": {
+      "level": "debug",
+      "timestamp": true
+    },
+        "dns": {
+        "servers": [
+            {
+                "tag": "dns_direct",
+                "address": "223.5.5.5",
+                "detour": "direct"
+            },
+            {
+              "tag": "dns_proxy",
+              "address": "1.1.1.1",
+              "strategy": "ipv4_only",
+              "detour": "direct"
+            },
+            {
+                "tag": "dns_resolver",
+                "address": "223.5.5.5",
+                "detour": "direct"
+            }
+        ],
+        "rules": [
+            {
+                "outbound": "any",
+                "server": "dns_resolver"
+            },
+            {
+                "rule_set": "geosite-geolocation-!cn",
+                "server": "dns_proxy"
+            }
+        ],
+        "final": "dns_proxy"
+    },
+    "route": {
+        "rule_set": [
+            {
+                "tag": "geosite-geolocation-!cn",
+                "type": "remote",
+                "format": "binary",
+                "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-!cn.srs",
+                "download_detour": "vless-out"
+            },
+            {
+                "tag": "geoip-cn",
+                "type": "remote",
+                "format": "binary",
+                "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs",
+                "download_detour": "vless-out"
+            }
+        ],
+        "rules": [
+            {
+                "protocol": "dns",
+                "outbound": "dns-out"
+            },
+            {
+                "port": 853,
+                "network": "tcp",
+                "outbound": "block"
+            },
+            {
+                "port": [
+                    443,
+                    853
+                ],
+                "network": "udp",
+                "outbound": "block"
+            },
+            {
+                "type": "logical",
+                "mode": "and",
+                "rules": [
+                    {
+                        "rule_set": "geoip-cn",
+                        "invert": true
+                    },
+                    {
+                        "rule_set": "geosite-geolocation-!cn"
+                    }
+                ],
+                "outbound": "vless-out"
+            },
+            {
+                "rule_set": "geoip-cn",
+                "outbound": "direct"
+            },
+            {
+                "ip_is_private": true,
+                "outbound": "direct"
+            }
+        ],
+        "final": "proxy",
+        "auto_detect_interface": true
+    },
+    "inbounds": [
+      {
+        "type": "mixed",
+        "tag": "mixed-in",
+        "listen": "::",
+        "listen_port": 1080
+      },
+      {
+        "tag": "socks",
+        "type": "socks",
+        "listen": "::",
+        "listen_port": 10808
+      }
+    ],
+    "outbounds": [
+      {
+        "type": "vless",
+        "tag": "vless-out",
+        "server": "104.23.101.58",
+        "server_port": 443,
+        "uuid": "bc24baea-3e5c-4107-a231-416cf00504fe",
+        "flow": "",
+        "tls": {
+          "enabled": true,
+          "server_name": "pages-vless-a9f.pages.dev",
+          "utls": {
+            "enabled": true,
+            "fingerprint": "randomized"
+          }
+        },
+        "transport": {
+          "type": "ws",
+          "path": "/",
+          "headers": {
+            "Host": "pages-vless-a9f.pages.dev"
+          }
+        }
+      }
+    ]
+  }

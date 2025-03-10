@@ -10,11 +10,9 @@ class ConnectionProvider with ChangeNotifier {
   ServerModel? _currentServer;
   final String _storageKey = 'current_server';
   bool _autoConnect = false;
-  bool _tunMode = false;
   bool get isConnected => _isConnected;
   ServerModel? get currentServer => _currentServer;
   bool get autoConnect => _autoConnect;
-  bool get tunMode => _tunMode;
   
   ConnectionProvider() {
     _loadSettings();
@@ -24,22 +22,8 @@ class ConnectionProvider with ChangeNotifier {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     _autoConnect = prefs.getBool('auto_connect') ?? false;
-    _tunMode = prefs.getBool('tun_mode') ?? false;
     if (_autoConnect) {
       connect();
-    }
-  }
-  
-  Future<void> setTunMode(bool value) async {
-    if (_isConnected) {
-      await disconnect();
-    }
-    _tunMode = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('tun_mode', value);
-    notifyListeners();
-    if (_isConnected) {
-      await connect();
     }
   }
   
@@ -76,15 +60,11 @@ class ConnectionProvider with ChangeNotifier {
       final success = await V2RayService.start(
         serverIp: _currentServer!.ip,
         serverPort: _currentServer!.port,
-        tunMode: _tunMode,
       );
 
       if (success) {
         try {
-          // 仅在非TUN模式下启用系统代理
-          if (!_tunMode) {
-            await ProxyService.enableSystemProxy();
-          }
+          await ProxyService.enableSystemProxy();
           _isConnected = true;
           notifyListeners();
         } catch (e) {
@@ -97,10 +77,7 @@ class ConnectionProvider with ChangeNotifier {
   
   Future<void> disconnect() async {
     await V2RayService.stop();
-    // 仅在非TUN模式下禁用系统代理
-    if (!_tunMode) {
-      await ProxyService.disableSystemProxy();
-    }
+    await ProxyService.disableSystemProxy();
     _isConnected = false;
     notifyListeners();
   }

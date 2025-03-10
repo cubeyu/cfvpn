@@ -5,6 +5,8 @@ import 'package:path/path.dart' as path;
 class V2RayService {
   static Process? _v2rayProcess;
   static bool _isRunning = false;
+  static bool get isRunning => _isRunning;
+
   static Future<String> getExecutablePath(String executableName) async {
     if (Platform.isWindows) {
       final exePath = Platform.resolvedExecutable;
@@ -13,17 +15,17 @@ class V2RayService {
     }
     throw 'Unsupported platform';
   }
+
   static Future<String> _getV2RayPath() async {
     return getExecutablePath(path.join('v2ray', 'v2ray.exe'));
   }
+
   static Future<void> generateConfig({
     required String serverIp,
     required int serverPort,
     int localPort = 7898,  // SOCKS5 代理端口
     int httpPort = 7899,   // HTTP 代理端口
-    bool tunMode = false,   // TUN 模式
   }) async {
-    print('v2ray print: generateConfig called with tunMode: $tunMode');
     serverPort = 443;//暂时写死443
     final v2rayPath = await _getV2RayPath();
     final configPath = path.join(
@@ -31,18 +33,16 @@ class V2RayService {
       'config.json'
     );
 
-    final inbounds = [];
-
-    if (!tunMode) {
-      inbounds.add({
+    final inbounds = [
+      {
         "port": localPort,
         "protocol": "socks",
         "settings": {
           "auth": "noauth",
           "udp": true
         }
-      });
-      inbounds.add({
+      },
+      {
         "tag": "http",
         "port": httpPort,
         "protocol": "http",
@@ -59,23 +59,8 @@ class V2RayService {
           "udp": true,
           "allowTransparent": false
         }
-      });
-    } else {
-      print('v2ray print: 开启TUN模式，tunMode值为: $tunMode');
-      inbounds.add({
-        "port": 7900,
-        "protocol": "dokodemo-door",
-        "settings": {
-          "network": "tcp,udp",
-          "followRedirect": true
-        },
-        "sniffing": {
-          "enabled": true,
-          "destOverride": ["http", "tls"],
-          "routeOnly": false
-        }
-      });
-    }
+      }
+    ];
 
     final config = {
       "inbounds": inbounds,
@@ -263,12 +248,11 @@ class V2RayService {
       return false;
     }
   }
+
   static Future<bool> start({
     required String serverIp,
     required int serverPort,
-    bool tunMode = false,
   }) async {
-    print('v2ray print: start方法被调用，tunMode值为: $tunMode');
     if (_isRunning) {
       await stop();  // 确保先停止旧进程
     }
@@ -276,84 +260,34 @@ class V2RayService {
     try {
       // 检查端口是否可用
       if (!await isPortAvailable(7898) || !await isPortAvailable(7899)) {
-        throw 'Port 7898 or 7899 is already in use';
+        return false;
       }
 
-      // 生成配置文件
-      await generateConfig(serverIp: serverIp, serverPort: serverPort, tunMode: tunMode);
+      await generateConfig(
+        serverIp: serverIp,
+        serverPort: serverPort,
+      );
 
       final v2rayPath = await _getV2RayPath();
-      if (!await File(v2rayPath).exists()) {
-        throw 'v2ray.exe not found at: $v2rayPath';
-      }
-
-      // 启动 v2ray 进程
       _v2rayProcess = await Process.start(
         v2rayPath,
         ['run'],
         workingDirectory: path.dirname(v2rayPath),
-        runInShell: true  // 在shell中运行以获取更高权限
       );
-
-      // 等待一段时间检查进程是否正常运行
-      await Future.delayed(const Duration(seconds: 2));
-      
-      if (_v2rayProcess == null) {
-        throw 'Failed to start V2Ray process';
-      }
-
-      // 监听进程输出
-      _v2rayProcess!.stdout.transform(utf8.decoder).listen((data) {
-        print('V2Ray stdout: $data');
-        if (data.contains('failed to')) {
-          _isRunning = false;
-        }
-      });
-
-      _v2rayProcess!.stderr.transform(utf8.decoder).listen((data) {
-        print('V2Ray stderr: $data');
-      });
-
-      // 监听进程退出
-      _v2rayProcess!.exitCode.then((code) {
-        print('V2Ray process exited with code: $code');
-        _isRunning = false;
-      });
 
       _isRunning = true;
       return true;
     } catch (e) {
-      print('Failed to start V2Ray: $e');
-      await stop();  // 确保清理
+      print('启动V2Ray失败: $e');
       return false;
     }
   }
 
   static Future<void> stop() async {
     if (_v2rayProcess != null) {
-      try {
-        _v2rayProcess!.kill(ProcessSignal.sigterm);
-        await Future.delayed(const Duration(seconds: 1));
-        if (_v2rayProcess != null) {
-          _v2rayProcess!.kill(ProcessSignal.sigkill);
-        }
-      } catch (e) {
-        print('Error stopping V2Ray: $e');
-      } finally {
-        _v2rayProcess = null;
-        _isRunning = false;
-      }
+      _v2rayProcess!.kill();
+      _v2rayProcess = null;
     }
-
-    // 尝试杀死可能残留的进程
-    if (Platform.isWindows) {
-      try {
-        await Process.run('taskkill', ['/F', '/IM', 'v2ray.exe']);
-      } catch (e) {
-        print('Error killing V2Ray process: $e');
-      }
-    }
+    _isRunning = false;
   }
-
-  static bool get isRunning => _isRunning;
 }
