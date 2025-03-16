@@ -67,66 +67,25 @@ class _SettingsPageState extends State<SettingsPage> {
                   .setAutoConnect(value);
             },
           ),
+          const SizedBox(height: 20),
           const Divider(),
-          
-          const _SectionHeader(title: '网络设置'),
+          //作者信息
           _SettingTile(
-            title: '代理模式',
-            subtitle: '全局代理',
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: 打开代理模式选择
-            },
+            title: '作者信息',
+            subtitle: 'JeseeLin',
+            onTap: () {},
           ),
           _SettingTile(
-            title: '路由设置',
-            subtitle: '配置分流规则',
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: 打开路由设置
-            },
+            title: 'github地址',
+            subtitle: 'https://github.com/jesee/cfvpn',
+            onTap: () {},
           ),
-          const Divider(),
-          
-          const _SectionHeader(title: '关于'),
           _SettingTile(
             title: '当前版本',
             subtitle: 'v1.0.1',
             onTap: () {},
           ),
-          _SettingTile(
-            title: '检查更新',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('已是最新版本'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
-          ),
-          _SettingTile(
-            title: '隐私政策',
-            onTap: () {
-              // TODO: 打开隐私政策
-            },
-          ),
           const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ElevatedButton(
-              onPressed: () {
-                // TODO: 实现清除缓存功能
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('缓存已清除'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-              },
-              child: const Text('清除缓存'),
-            ),
-          ),
         ],
       ),
     );

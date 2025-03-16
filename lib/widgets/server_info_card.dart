@@ -36,21 +36,17 @@ class ServerInfoCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.location_on, color: Colors.blue),
-                const SizedBox(width: 8),
-                Text(
-                  server.location,
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
                 const Icon(Icons.speed, color: Colors.blue),
                 const SizedBox(width: 8),
                 Text(
                   '延迟: ${server.ping}ms',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(width: 16),
+                const Icon(Icons.network_check, color: Colors.blue),
+                const SizedBox(width: 8),
+                Text(
+                  '速度: ${server.downloadSpeed}MB/s',
                   style: const TextStyle(fontSize: 14),
                 ),
               ],
@@ -60,4 +56,4 @@ class ServerInfoCard extends StatelessWidget {
       ),
     );
   }
-} 
+}

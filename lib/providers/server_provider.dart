@@ -72,12 +72,19 @@ class ServerProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updatePing(String id, int ping) async {
+  Future<void> updatePingAndSpeed(String id, int ping, int downloadSpeed) async {
     final index = _servers.indexWhere((s) => s.id == id);
     if (index != -1) {
       _servers[index].ping = ping;
+      _servers[index].downloadSpeed = downloadSpeed;
       await _saveServers();
       notifyListeners();
     }
   }
-} 
+
+  Future<void> clearServers() async {
+    _servers.clear();
+    await _saveServers();
+    notifyListeners();
+  }
+}

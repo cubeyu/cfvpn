@@ -60,6 +60,12 @@ class CloudflareTestService {
       
       // 转换为服务器列表
       final List<ServerModel> servers = [];
+      
+      // 如果结果为空，直接返回空列表
+      if (results.isEmpty) {
+        return servers;
+      }
+      
       int index = 1;
       
       for (var result in results) {
@@ -71,6 +77,7 @@ class CloudflareTestService {
           ip: ip,
           port: result['port'],
           ping: result['delay'],
+          downloadSpeed: result['downloadSpeed'],
         ));
         index++;
       }

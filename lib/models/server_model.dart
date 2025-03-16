@@ -5,6 +5,7 @@ class ServerModel {
   final String ip;
   final int port;
   int ping;
+  int downloadSpeed;
   bool isSelected;
 
   ServerModel({
@@ -14,6 +15,7 @@ class ServerModel {
     required this.ip,
     required this.port,
     this.ping = 0,
+    this.downloadSpeed = 0,
     this.isSelected = false,
   });
 
@@ -25,6 +27,7 @@ class ServerModel {
       'ip': ip,
       'port': port,
       'ping': ping,
+      'downloadSpeed': downloadSpeed,
       'isSelected': isSelected,
     };
   }
@@ -37,7 +40,8 @@ class ServerModel {
       ip: json['ip'],
       port: json['port'],
       ping: json['ping'],
+      downloadSpeed: json['downloadSpeed'] ?? 0,
       isSelected: json['isSelected'],
     );
   }
-} 
+}

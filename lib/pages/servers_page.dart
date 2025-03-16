@@ -57,6 +57,8 @@ class _ServersPageState extends State<ServersPage> {
             tooltip: '测试延迟',
             onPressed: () async {
               final serverProvider = context.read<ServerProvider>();
+              final connectionProvider = context.read<ConnectionProvider>();
+
               // 收集所有服务器的IP地址
               final ips = serverProvider.servers.map((server) => server.ip).join(',');
               if (ips.isEmpty) {
@@ -64,6 +66,30 @@ class _ServersPageState extends State<ServersPage> {
                   const SnackBar(content: Text('没有可测试的服务器')),
                 );
                 return;
+              }
+
+              // 检查连接状态
+              if (connectionProvider.isConnected) {
+                final shouldContinue = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('警告'),
+                    content: const Text('测试前需要断开当前连接，是否继续？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('继续'),
+                      ),
+                    ],
+                  ),
+                ) ?? false;
+
+                if (!shouldContinue) return;
+                await connectionProvider.disconnect();
               }
 
               try {
@@ -85,7 +111,7 @@ class _ServersPageState extends State<ServersPage> {
                 }
 
                 // 读取测试结果
-                final resultFile = File('result.json');
+                final resultFile = File(path.join(path.dirname(exePath), 'result.json'));
                 if (!await resultFile.exists()) {
                   throw '未找到测试结果文件';
                 }
@@ -97,6 +123,7 @@ class _ServersPageState extends State<ServersPage> {
                 for (var result in results) {
                   final ip = result['ip'];
                   final delay = result['delay'];
+                  final downloadSpeed = result['downloadSpeed'];
                   final server = serverProvider.servers.firstWhere(
                     (server) => server.ip == ip,
                     orElse: () => ServerModel(
@@ -108,7 +135,11 @@ class _ServersPageState extends State<ServersPage> {
                     ),
                   );
                   if (server.id.isNotEmpty) {
-                    serverProvider.updatePing(server.id, delay);
+                    serverProvider.updatePingAndSpeed(server.id, delay, downloadSpeed);
+                    // 如果是当前选中的服务器，更新ConnectionProvider中的数据
+                    if (connectionProvider.currentServer?.id == server.id) {
+                      connectionProvider.setCurrentServer(server);
+                    }
                   }
                 }
 
@@ -139,6 +170,55 @@ class _ServersPageState extends State<ServersPage> {
             icon: const Icon(Icons.cloud),
             tooltip: '从Cloudflare添加',
             onPressed: () => _addCloudflareServer(context),
+          ),
+          // 删除所有服务器按钮
+          IconButton(
+            icon: const Icon(Icons.delete_forever),
+            tooltip: '删除所有服务器',
+            onPressed: () async {
+              final serverProvider = context.read<ServerProvider>();
+              final connectionProvider = context.read<ConnectionProvider>();
+
+              if (serverProvider.servers.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('没有可删除的服务器')),
+                );
+                return;
+              }
+
+              final shouldDelete = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('警告'),
+                  content: const Text('确定要删除所有服务器吗？此操作不可恢复。'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('取消'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('确定'),
+                    ),
+                  ],
+                ),
+              ) ?? false;
+
+              if (!shouldDelete) return;
+
+              // 如果当前有连接，先断开
+              if (connectionProvider.isConnected) {
+                await connectionProvider.disconnect();
+              }
+
+              // 删除所有服务器
+              serverProvider.clearServers();
+
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('已删除所有服务器')),
+              );
+            },
           ),
           // 新增服务器按钮
           // IconButton(
@@ -266,7 +346,13 @@ class ServerListItem extends StatelessWidget {
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('延迟: ${server.ping}ms'),
+              Row(
+                children: [
+                  Text('延迟: ${server.ping}ms'),
+                  const SizedBox(width: 16),
+                  Text('网速: ${server.downloadSpeed}MB/s'),
+                ],
+              ),
               Text('${server.ip}:${server.port}'),
             ],
           ),
