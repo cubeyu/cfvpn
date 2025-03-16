@@ -13,6 +13,12 @@
 5. 点击节点，切换到首页，点击 **连接** 按钮即可。
 6. 列表节点左滑可以删除节点
 
+# 问题
+1、如果遇到wsl中无法使用代理，可以将wsl setting中的网络设置为mirrored
+
 # 界面如图：
 ![tvrtf-sbjwi](https://github.com/user-attachments/assets/b1995d4d-83fe-4332-9d4f-85183cea58c2)
 ![t7x49-nm0c8](https://github.com/user-attachments/assets/64ada0ea-d135-46f4-8d60-02ae2ba0be93)
+
+# 后续迭代
+1、windows系统下实现tun模式或透明代理
