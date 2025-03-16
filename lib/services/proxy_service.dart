@@ -9,6 +9,17 @@ class ProxyService {
     if (!Platform.isWindows) return;
 
     try {
+      // 设置系统环境变量
+      await Process.run(
+        'setx',
+        ['HTTP_PROXY', 'http://127.0.0.1:7899'],
+        runInShell: true
+      );
+      await Process.run(
+        'setx',
+        ['HTTPS_PROXY', 'http://127.0.0.1:7899'],
+        runInShell: true
+      );
       final key = Registry.openPath(RegistryHive.currentUser, path: _registryPath, desiredAccessRights: AccessRights.allAccess);
       
       // 启用代理
@@ -32,6 +43,17 @@ class ProxyService {
     if (!Platform.isWindows) return;
 
     try {
+      // 删除环境变量
+      await Process.run(
+        'reg',
+        ['delete', 'HKCU\Environment', '/v', 'HTTP_PROXY', '/f'],
+        runInShell: true
+      );
+      await Process.run(
+        'reg',
+        ['delete', 'HKCU\Environment', '/v', 'HTTPS_PROXY', '/f'],
+        runInShell: true
+      );
       final key = Registry.openPath(RegistryHive.currentUser, path: _registryPath, desiredAccessRights: AccessRights.allAccess);
       
       // 禁用代理
@@ -39,6 +61,12 @@ class ProxyService {
       
       key.close();
 
+      // 广播环境变量变更
+      await Process.run(
+        'rundll32',
+        ['user32.dll,UpdatePerUserSystemParameters'],
+        runInShell: true
+      );
       // 通知系统代理设置已更改
       await _refreshSystemProxy();
     } catch (e) {
@@ -69,4 +97,4 @@ class ProxyService {
       print('Error refreshing system proxy: $e');
     }
   }
-} 
+}
