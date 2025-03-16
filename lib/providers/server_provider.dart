@@ -2,16 +2,20 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/server_model.dart';
+import 'connection_provider.dart';
 
 class ServerProvider with ChangeNotifier {
   List<ServerModel> _servers = [];
   final String _storageKey = 'servers';
+  final ConnectionProvider connectionProvider;
+
+  ServerProvider({required this.connectionProvider}) {
+    _loadServers();
+  }
   
   List<ServerModel> get servers => _servers;
 
-  ServerProvider() {
-    _loadServers();
-  }
+
 
   Future<void> _loadServers() async {
     final prefs = await SharedPreferences.getInstance();
@@ -85,6 +89,11 @@ class ServerProvider with ChangeNotifier {
   Future<void> clearServers() async {
     _servers.clear();
     await _saveServers();
+    
+    if (connectionProvider.currentServer != null) {
+      connectionProvider.disconnect();
+      connectionProvider.setCurrentServer(null);
+    }
     notifyListeners();
   }
 }

@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ConnectionProvider()),
-        ChangeNotifierProvider(create: (_) => ServerProvider()),
+        ChangeNotifierProvider(create: (context) => ServerProvider(connectionProvider: Provider.of<ConnectionProvider>(context, listen: false))),
       ],
       child: MaterialApp(
         title: 'Proxy App',

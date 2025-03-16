@@ -69,20 +69,14 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 20),
           const Divider(),
-          //作者信息
           _SettingTile(
-            title: '作者信息',
-            subtitle: 'JeseeLin',
+            title: '当前版本',
+            subtitle: 'v1.0.2',
             onTap: () {},
           ),
           _SettingTile(
             title: 'github地址',
             subtitle: 'https://github.com/jesee/cfvpn',
-            onTap: () {},
-          ),
-          _SettingTile(
-            title: '当前版本',
-            subtitle: 'v1.0.1',
             onTap: () {},
           ),
           const SizedBox(height: 20),
