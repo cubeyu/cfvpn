@@ -98,6 +98,14 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/runner/v2ray"
   DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
+# Copy vless.conf and other required files
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/runner/vless.conf"
+  "${CMAKE_CURRENT_SOURCE_DIR}/runner/cftest.exe"
+  "${CMAKE_CURRENT_SOURCE_DIR}/runner/ip.txt"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)
+
 install(FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/runner/cftest.exe"
   "${CMAKE_CURRENT_SOURCE_DIR}/runner/ip.txt"

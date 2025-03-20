@@ -20,13 +20,44 @@ class V2RayService {
     return getExecutablePath(path.join('v2ray', 'v2ray.exe'));
   }
 
+  static Future<Map<String, dynamic>> parseVlessConfig() async {
+    try {
+      final vlessPath = path.join(
+        path.dirname(Platform.resolvedExecutable),
+        'vless.conf'
+      );
+      
+      final content = await File(vlessPath).readAsString();
+      final uri = Uri.parse(content.trim().replaceFirst('vless://', 'https://'));
+      
+      // 解析查询参数
+      final queryParams = uri.queryParameters;
+      
+      return {
+        'id': uri.userInfo,
+        'address': uri.host,
+        'port': uri.port,
+        'encryption': queryParams['encryption'] ?? 'none',
+        'security': queryParams['security'] ?? 'none',
+        'sni': queryParams['sni'] ?? '',
+        'fp': queryParams['fp'] ?? 'randomized',
+        'type': queryParams['type'] ?? 'ws',
+        'host': queryParams['host'] ?? '',
+        'path': queryParams['path'] ?? '/',
+      };
+    } catch (e) {
+      print('解析 vless 配置失败: $e');
+      rethrow;
+    }
+  }
+
   static Future<void> generateConfig({
     required String serverIp,
     required int serverPort,
-    int localPort = 7898,  // SOCKS5 代理端口
-    int httpPort = 7899,   // HTTP 代理端口
+    int localPort = 7898,
+    int httpPort = 7899,
   }) async {
-    serverPort = 443;//暂时写死443
+    final vlessConfig = await parseVlessConfig();
     final v2rayPath = await _getV2RayPath();
     final configPath = path.join(
       path.dirname(v2rayPath),
@@ -72,31 +103,26 @@ class V2RayService {
             "vnext": [
               {
                 "address": serverIp,
-                "port": serverPort,
+                "port": vlessConfig['port'],
                 "users": [
                   {
-                    "id": "bc24baea-3e5c-4107-a231-416cf00504fe",
+                    "id": vlessConfig['id'],
                     "alterId": 0,
                     "email": "t@t.tt",
                     "security": "auto",
-                    "encryption": "none"
+                    "encryption": vlessConfig['encryption']
                   }
                 ]
               }
             ]
           },
           "streamSettings": {
-            "network": "ws",
-            "security": "tls",
-            "tlsSettings": {
-              "allowInsecure": false,
-              "serverName": "pages-vless-a9f.pages.dev",
-              "fingerprint": "randomized"
-            },
+            "network": vlessConfig['type'],
+            "security": vlessConfig['security'],
             "wsSettings": {
-              "path": "/",
+              "path": vlessConfig['path'],
               "headers": {
-                "Host": "pages-vless-a9f.pages.dev"
+                "Host": vlessConfig['host']
               }
             },
             "sockopt": {
