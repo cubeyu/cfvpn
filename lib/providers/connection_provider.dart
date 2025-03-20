@@ -20,8 +20,21 @@ class ConnectionProvider with ChangeNotifier {
   bool get autoConnect => _autoConnect;
   
   ConnectionProvider() {
+    // 启动时先进行清理操作
+    _cleanupOnStartup();
     _loadSettings();
     _loadCurrentServer();
+  }
+
+  Future<void> _cleanupOnStartup() async {
+    try {
+      // 停止可能存在的 V2Ray 进程
+      await V2RayService.stop();
+      // 禁用系统代理
+      await ProxyService.disableSystemProxy();
+    } catch (e) {
+      print('清理操作失败: $e');
+    }
   }
   
   Future<void> _loadSettings() async {
