@@ -188,7 +188,7 @@ class ConnectionProvider with ChangeNotifier {
         }
         
         // 所有配置都尝试完毕但都失败了
-        _connectionError = "所有节点连接失败，请参考自建节点方案";
+        _connectionError = "所有节点连接失败，请参考自建节点方案，或在设置页面自建节点设置中切换到其他节点重新试试";
         _isConnected = false;
         _isConnecting = false;
         notifyListeners();
