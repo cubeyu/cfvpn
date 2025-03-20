@@ -20,5 +20,5 @@
 ![tvrtf-sbjwi](https://github.com/user-attachments/assets/b1995d4d-83fe-4332-9d4f-85183cea58c2)
 ![t7x49-nm0c8](https://github.com/user-attachments/assets/64ada0ea-d135-46f4-8d60-02ae2ba0be93)
 
-# 后续迭代
-1、windows系统下实现tun模式或透明代理
+# 自建cloudflare节点
+为避免因为使用人数过多导致网络无法使用情况，建议大家可以参考项目中的【自建cf节点教程.md】创建一个个人的节点
