@@ -21,6 +21,8 @@ https://github.com/jesee/cfvpn/blob/master/worker/_worker.js
 
 ![tdogc-phaqa6](./images-create-cloudflare/6.png)
 
+Deploy之后点击上图左上角的返回，定位到下图的菜单
+
 将UUID值粘贴进去：bc24baea-3e5c-4107-a231-416cf00504fe
 
 ![tdogc-phaqa7](./images-create-cloudflare/7.png)
