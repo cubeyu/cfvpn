@@ -1,6 +1,7 @@
 此教程简单明了介绍了自建cf节点方法，节点_worker.js来自cmliu的cmliu/edgetunnel项目
 
-1、先访问https://dash.cloudflare.com/login用邮箱注册一个账号并在邮箱点击验证链接
+1、先访问[cloudflare](https://dash.cloudflare.com/login)，用邮箱注册一个账号，并在邮箱点击验证链接
+
 2、邮箱点击验证链接之后，如下图操作
 
 
