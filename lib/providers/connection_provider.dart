@@ -67,12 +67,25 @@ class ConnectionProvider with ChangeNotifier {
       notifyListeners();
 
       try {
+        // 首先检查是否有已验证的配置
+        final verifiedConfigFile = File('${await V2RayService.getExecutablePath("verified_vless.conf")}');
+        if (verifiedConfigFile.existsSync()) {
+          final verifiedConfig = await verifiedConfigFile.readAsString();
+          final configFile = File('${await V2RayService.getExecutablePath("vless.conf")}');
+          await configFile.writeAsString(verifiedConfig);
+        }
+
+        _connectionError = "正在启动代理服务...";  // 添加启动状态提示
+        notifyListeners();
+        
         final success = await V2RayService.start(
           serverIp: _currentServer!.ip,
           serverPort: _currentServer!.port,
         );
 
         if (success) {
+          _connectionError = "正在配置系统代理...";  // 添加代理配置状态提示
+          notifyListeners();
           await ProxyService.enableSystemProxy();
           _isConnected = true;
           _isConnecting = false;
@@ -81,13 +94,72 @@ class ConnectionProvider with ChangeNotifier {
           
           // 延迟5秒后进行连通性测试
           await Future.delayed(const Duration(seconds: 5));
+          _connectionError = "正在进行连通性测试...";  // 添加测试状态提示
+          notifyListeners();
           final testResult = await testConnection();
           if (!testResult) {
-            _connectionError = "连接已建立，但访问受限";
+            _connectionError = "连通性测试失败，正在切换自建节点配置...";
             notifyListeners();
-            return;
+            // 检查是否有多行配置
+            final configFile = File('${await V2RayService.getExecutablePath("vless.conf")}');
+            if (!configFile.existsSync()) {
+              _connectionError = "连接已建立，但访问受限";
+              notifyListeners();
+              return;
+            }
+            final lines = await configFile.readAsLines();
+            if (lines.length <= 1) {
+              _connectionError = "连接已建立，但访问受限";
+              notifyListeners();
+              return;
+            }
+
+            // 尝试切换到下一个配置
+            for (var i = 1; i < lines.length; i++) {
+              if (lines[i].trim().isEmpty) continue;
+              
+              // 更新配置文件为当前行
+              await configFile.writeAsString(lines[i]);
+              
+              // 重新启动连接
+              await V2RayService.stop();
+              final retrySuccess = await V2RayService.start(
+                serverIp: _currentServer!.ip,
+                serverPort: _currentServer!.port,
+              );
+
+              if (retrySuccess) {
+                await ProxyService.enableSystemProxy();
+                await Future.delayed(const Duration(seconds: 5));
+                _connectionError = "正在进行连通性测试...";  // 添加测试状态提示
+                notifyListeners();
+                final retryTestResult = await testConnection();
+                if (retryTestResult) {
+                  _connectionError = "连通性测试成功";
+                  notifyListeners();
+                  // 保存当前可用的配置
+                  final verifiedConfigFile = File('${await V2RayService.getExecutablePath("verified_vless.conf")}');
+                  final currentConfig = await configFile.readAsString();
+                  await verifiedConfigFile.writeAsString(currentConfig);
+                  await Future.delayed(const Duration(seconds: 2));
+                  _connectionError = null;
+                  notifyListeners();
+                  return;
+                }
+              }
+            }
+            
+            // 所有配置都尝试失败
+            _connectionError = "所有节点连接失败，请参考自建节点方案";
+            await V2RayService.stop();
+            await ProxyService.disableSystemProxy();
+            _isConnected = false;
+          } else {
+            _connectionError = "连通性测试成功";
+            notifyListeners();
+            await Future.delayed(const Duration(seconds: 2));
+            _connectionError = null;
           }
-          _connectionError = null;
         } else {
           _connectionError = "连接失败，请稍后重试";
           _isConnecting = false;
