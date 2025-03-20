@@ -27,6 +27,8 @@ Deploy之后点击上图左上角的返回，定位到下图的菜单
 
 ![tdogc-phaqa7](./images-create-cloudflare/7.png)
 
+Deploy之后再定位到下图的菜单
+
 ![tdogc-phaqa8](./images-create-cloudflare/8.png)
 
 ![tdogc-phaqa9](./images-create-cloudflare/9.png)
