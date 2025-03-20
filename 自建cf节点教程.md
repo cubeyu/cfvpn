@@ -33,6 +33,10 @@ Deploy之后再定位到下图的菜单
 
 ![tdogc-phaqa9](./images-create-cloudflare/9.png)
 
+再Deploy之后定位到下图菜单，并复制途中域名XXXXXX
+
+拼接地址并访问如：bold-truth-e885.jeseelin233-1.workers.dev/bc24baea-3e5c-4107-a231-416cf00504fe
+
 ![tdogc-phaqa10](./images-create-cloudflare/10.png)
 
 ![tdogc-phaqa11](./images-create-cloudflare/11.png)
