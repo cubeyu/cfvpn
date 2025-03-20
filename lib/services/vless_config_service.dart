@@ -56,4 +56,29 @@ print(lines);
       return null;
     }
   }
+
+  static Future<void> deleteHost(String host) async {
+    final exePath = Platform.resolvedExecutable;
+    final exeDir = path.dirname(exePath);
+    final configPath = path.join(exeDir, 'vless.conf');
+    final configFile = File(configPath);
+
+    if (!await configFile.exists()) {
+      return;
+    }
+
+    final lines = await configFile.readAsLines();
+    final updatedLines = lines.where((line) {
+      try {
+        final uri = Uri.parse(line.trim());
+        final lineHost = uri.queryParameters['host'];
+        return lineHost != host;
+      } catch (e) {
+        print('解析配置失败: $e');
+        return true;
+      }
+    }).toList();
+
+    await configFile.writeAsString(updatedLines.join('\n'));
+  }
 }

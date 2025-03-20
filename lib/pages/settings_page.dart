@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/connection_provider.dart';
 import '../services/autostart_service.dart';
 import '../services/vless_config_service.dart';
+import 'add_vless_config_page.dart';
+import 'vless_config_list_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -67,24 +69,30 @@ class _SettingsPageState extends State<SettingsPage> {
           const _SectionHeader(title: '自建节点设置'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: DropdownButtonFormField<String>(
-              value: _selectedHost,
-              decoration: const InputDecoration(
-                labelText: '选择自建节点',
-                hintText: '请选择一个节点',
-              ),
-              items: _hostList.map((host) {
-                return DropdownMenuItem(
-                  value: host,
-                  child: Text(host),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedHost = value;
-                });
-                // TODO: 更新连通性测试结果中选中的配置
-              },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      _selectedHost ?? '未选择节点',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const VlessConfigListPage(),
+                        ),
+                      );
+                      _loadHostList();
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
