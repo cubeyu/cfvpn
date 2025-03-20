@@ -13,11 +13,14 @@ class ConnectionProvider with ChangeNotifier {
   ServerModel? _currentServer;
   final String _storageKey = 'current_server';
   bool _autoConnect = false;
+  String? _verifiedConfig;  // 添加缓存变量存储已验证的配置
+  final String _verifiedConfigKey = 'verified_config';  // 添加存储键
   bool get isConnected => _isConnected;
   bool get isConnecting => _isConnecting;
   String? get connectionError => _connectionError;
   ServerModel? get currentServer => _currentServer;
   bool get autoConnect => _autoConnect;
+  String? get verifiedConfig => _verifiedConfig;
   
   ConnectionProvider() {
     // 启动时先进行清理操作
@@ -40,6 +43,7 @@ class ConnectionProvider with ChangeNotifier {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     _autoConnect = prefs.getBool('auto_connect') ?? false;
+    _verifiedConfig = prefs.getString(_verifiedConfigKey);
     if (_autoConnect) {
       connect();
     }
@@ -80,24 +84,47 @@ class ConnectionProvider with ChangeNotifier {
       notifyListeners();
 
       try {
-        // 首先检查是否有已验证的配置
-        final verifiedConfigFile = File('${await V2RayService.getExecutablePath("verified_vless.conf")}');
-        if (verifiedConfigFile.existsSync()) {
-          final verifiedConfig = await verifiedConfigFile.readAsString();
-          final configFile = File('${await V2RayService.getExecutablePath("vless.conf")}');
-          await configFile.writeAsString(verifiedConfig);
+        final configFile = File('${await V2RayService.getExecutablePath("vless.conf")}');
+        final originalConfig = await configFile.readAsString();
+        final lines = originalConfig.split('\n');//这里按行分割可能有bug吧，应该要用EOF系统变量代替？
+        
+        if (lines.isEmpty) {
+          _connectionError = "配置文件为空";
+          _isConnecting = false;
+          notifyListeners();
+          return;
         }
 
-        _connectionError = "正在启动代理服务...";  // 添加启动状态提示
+        // 优先使用上次成功的配置
+        if (_verifiedConfig != null) {
+          // 对配置字符串进行预处理，移除多余的空白字符
+          final normalizedVerifiedConfig = _verifiedConfig!.trim();
+          final normalizedLines = lines.map((line) => line.trim()).toList();
+          
+          if (normalizedLines.contains(normalizedVerifiedConfig)) {
+            // 如果有缓存的配置且在配置列表中，优先使用它
+            _verifiedConfig = normalizedVerifiedConfig;
+            _connectionError = "正在使用上次成功的配置连接...";
+          } else {
+            // 否则使用第一行配置
+            _verifiedConfig = lines[0].trim();
+            _connectionError = "正在启动代理服务...";
+          }
+        } else {
+          // 如果没有缓存配置，使用第一行配置
+          _verifiedConfig = lines[0].trim();
+          _connectionError = "正在启动代理服务...";
+        }
         notifyListeners();
         
         final success = await V2RayService.start(
           serverIp: _currentServer!.ip,
           serverPort: _currentServer!.port,
+          verifiedConfig: _verifiedConfig,
         );
 
         if (success) {
-          _connectionError = "正在配置系统代理...";  // 添加代理配置状态提示
+          _connectionError = "正在配置系统代理...";
           notifyListeners();
           await ProxyService.enableSystemProxy();
           _isConnected = true;
@@ -105,22 +132,15 @@ class ConnectionProvider with ChangeNotifier {
           _connectionError = "正在等待网络稳定...";
           notifyListeners();
           
-          // 延迟5秒后进行连通性测试
           await Future.delayed(const Duration(seconds: 5));
-          _connectionError = "正在进行连通性测试...";  // 添加测试状态提示
+          _connectionError = "正在进行连通性测试...";
           notifyListeners();
           final testResult = await testConnection();
+          
           if (!testResult) {
             _connectionError = "连通性测试失败，正在切换自建节点配置...";
             notifyListeners();
-            // 检查是否有多行配置
-            final configFile = File('${await V2RayService.getExecutablePath("vless.conf")}');
-            if (!configFile.existsSync()) {
-              _connectionError = "连接已建立，但访问受限";
-              notifyListeners();
-              return;
-            }
-            final lines = await configFile.readAsLines();
+            
             if (lines.length <= 1) {
               _connectionError = "连接已建立，但访问受限";
               notifyListeners();
@@ -131,29 +151,26 @@ class ConnectionProvider with ChangeNotifier {
             for (var i = 1; i < lines.length; i++) {
               if (lines[i].trim().isEmpty) continue;
               
-              // 更新配置文件为当前行
-              await configFile.writeAsString(lines[i]);
-              
-              // 重新启动连接
+              _verifiedConfig = lines[i];
               await V2RayService.stop();
               final retrySuccess = await V2RayService.start(
                 serverIp: _currentServer!.ip,
                 serverPort: _currentServer!.port,
+                verifiedConfig: _verifiedConfig,
               );
 
               if (retrySuccess) {
                 await ProxyService.enableSystemProxy();
                 await Future.delayed(const Duration(seconds: 5));
-                _connectionError = "正在进行连通性测试...";  // 添加测试状态提示
+                _connectionError = "正在进行连通性测试...";
                 notifyListeners();
                 final retryTestResult = await testConnection();
                 if (retryTestResult) {
                   _connectionError = "连通性测试成功";
                   notifyListeners();
-                  // 保存当前可用的配置
-                  final verifiedConfigFile = File('${await V2RayService.getExecutablePath("verified_vless.conf")}');
-                  final currentConfig = await configFile.readAsString();
-                  await verifiedConfigFile.writeAsString(currentConfig);
+                  // 保存成功的配置
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString(_verifiedConfigKey, _verifiedConfig!);
                   await Future.delayed(const Duration(seconds: 2));
                   _connectionError = null;
                   notifyListeners();
@@ -162,7 +179,6 @@ class ConnectionProvider with ChangeNotifier {
               }
             }
             
-            // 所有配置都尝试失败
             _connectionError = "所有节点连接失败，请参考自建节点方案";
             await V2RayService.stop();
             await ProxyService.disableSystemProxy();
@@ -170,6 +186,9 @@ class ConnectionProvider with ChangeNotifier {
           } else {
             _connectionError = "连通性测试成功";
             notifyListeners();
+            // 保存成功的配置
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(_verifiedConfigKey, _verifiedConfig!);
             await Future.delayed(const Duration(seconds: 2));
             _connectionError = null;
           }
@@ -186,7 +205,6 @@ class ConnectionProvider with ChangeNotifier {
         notifyListeners();
       }
     } else if (_isConnecting) {
-      // 如果正在连接中，则取消连接
       _isConnecting = false;
       _connectionError = "已取消连接";
       await V2RayService.stop();

@@ -20,15 +20,9 @@ class V2RayService {
     return getExecutablePath(path.join('v2ray', 'v2ray.exe'));
   }
 
-  static Future<Map<String, dynamic>> parseVlessConfig() async {
+  static Future<Map<String, dynamic>> parseVlessConfig(String vlessConfig) async {
     try {
-      final vlessPath = path.join(
-        path.dirname(Platform.resolvedExecutable),
-        'vless.conf'
-      );
-      
-      final content = await File(vlessPath).readAsString();
-      final uri = Uri.parse(content.trim().replaceFirst('vless://', 'https://'));
+      final uri = Uri.parse(vlessConfig.trim().replaceFirst('vless://', 'https://'));
       
       // 解析查询参数
       final queryParams = uri.queryParameters;
@@ -54,10 +48,11 @@ class V2RayService {
   static Future<void> generateConfig({
     required String serverIp,
     required int serverPort,
+    required String verifiedConfig,
     int localPort = 7898,
     int httpPort = 7899,
   }) async {
-    final vlessConfig = await parseVlessConfig();
+    final vlessConfig = await parseVlessConfig(verifiedConfig);
     final v2rayPath = await _getV2RayPath();
     final configPath = path.join(
       path.dirname(v2rayPath),
@@ -278,7 +273,12 @@ class V2RayService {
   static Future<bool> start({
     required String serverIp,
     required int serverPort,
+    required String? verifiedConfig,
   }) async {
+    if (verifiedConfig == null) {
+      print('verifiedConfig不能为空');
+      return false;
+    }
     if (_isRunning) {
       await stop();  // 确保先停止旧进程
     }
@@ -292,6 +292,7 @@ class V2RayService {
       await generateConfig(
         serverIp: serverIp,
         serverPort: serverPort,
+        verifiedConfig: verifiedConfig,
       );
 
       final v2rayPath = await _getV2RayPath();

@@ -84,7 +84,7 @@ class CloudflareTestService {
 
       return servers;
     } catch (e) {
-      throw 'Failed to test servers: $e';
+      rethrow;
     }
   }
 }

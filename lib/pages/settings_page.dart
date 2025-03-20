@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/connection_provider.dart';
 import '../services/autostart_service.dart';
+import '../services/vless_config_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -12,17 +13,45 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _autoStart = false;
+  List<String> _hostList = [];
+  String? _selectedHost;
 
   @override
   void initState() {
     super.initState();
     _loadAutoStartStatus();
+    _loadHostList();
   }
 
   Future<void> _loadAutoStartStatus() async {
     final enabled = AutoStartService.isAutoStartEnabled();
     setState(() {
       _autoStart = enabled;
+    });
+  }
+
+  Future<void> _loadHostList() async {
+    final hosts = await VlessConfigService.getHostList();
+    final connectionProvider = Provider.of<ConnectionProvider>(context, listen: false);
+    String? verifiedConfig = connectionProvider.verifiedConfig;
+    
+    setState(() {
+      _hostList = hosts;
+      if (hosts.isNotEmpty) {
+        if (verifiedConfig != null) {
+          try {
+            final uri = Uri.parse(verifiedConfig.trim());
+            final currentHost = uri.queryParameters['host'];
+            if (currentHost != null && hosts.contains(currentHost)) {
+              _selectedHost = currentHost;
+              return;
+            }
+          } catch (e) {
+            print('解析当前配置失败: $e');
+          }
+        }
+        _selectedHost = hosts.first;
+      }
     });
   }
 
@@ -35,6 +64,31 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       body: ListView(
         children: [
+          const _SectionHeader(title: '自建节点设置'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: DropdownButtonFormField<String>(
+              value: _selectedHost,
+              decoration: const InputDecoration(
+                labelText: '选择自建节点',
+                hintText: '请选择一个节点',
+              ),
+              items: _hostList.map((host) {
+                return DropdownMenuItem(
+                  value: host,
+                  child: Text(host),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedHost = value;
+                });
+                // TODO: 更新连通性测试结果中选中的配置
+              },
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Divider(),
           const _SectionHeader(title: '通用设置'),
           _SettingSwitch(
             title: '开机自启',
