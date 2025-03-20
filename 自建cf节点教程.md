@@ -33,12 +33,18 @@ Deploy之后再定位到下图的菜单
 
 ![tdogc-phaqa9](./images-create-cloudflare/9.png)
 
-再Deploy之后定位到下图菜单，并复制途中域名XXXXXX
+再Deploy之后定位到下图菜单，并复制途中域名bold-truth-e885.jeseelin233-1.workers.dev
 
-拼接地址并访问如：bold-truth-e885.jeseelin233-1.workers.dev/bc24baea-3e5c-4107-a231-416cf00504fe
+将UUID拼接到地址后面并访问如：https://bold-truth-e885.jeseelin233-1.workers.dev/bc24baea-3e5c-4107-a231-416cf00504fe
 
 ![tdogc-phaqa10](./images-create-cloudflare/10.png)
+
+复制图中地址到[url解压缩工具](https://www.bejson.com/enc/urlencode/)解压缩一下
+
+![tdogc-phaqa12](./images-create-cloudflare/12.png)
 
 ![tdogc-phaqa11](./images-create-cloudflare/11.png)
 
 最后复制这个解压缩后的内容到软件目录下的vless.conf文件中就行了，此文件一行一条内容，不要多行混为一行
+
+![tdogc-phaqa13](./images-create-cloudflare/13.png)
