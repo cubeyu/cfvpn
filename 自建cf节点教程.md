@@ -48,3 +48,4 @@ Deploy之后再定位到下图的菜单
 最后复制这个解压缩后的内容到软件设置下自建节点设置页面进行添加
 
 ![tdogc-phaqa14](./images-create-cloudflare/14.png)
+![tdogc-phaqa15](./images-create-cloudflare/15.png)
