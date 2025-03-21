@@ -45,6 +45,6 @@ Deploy之后再定位到下图的菜单
 
 ![tdogc-phaqa11](./images-create-cloudflare/11.png)
 
-最后复制这个解压缩后的内容到软件目录下的vless.conf文件中就行了，此文件一行一条内容，不要多行混为一行
+最后复制这个解压缩后的内容到软件设置下自建节点设置页面进行添加
 
-![tdogc-phaqa13](./images-create-cloudflare/13.png)
+![tdogc-phaqa14](./images-create-cloudflare/14.png)
