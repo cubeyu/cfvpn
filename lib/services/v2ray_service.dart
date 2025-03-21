@@ -120,6 +120,10 @@ class V2RayService {
                 "Host": vlessConfig['host']
               }
             },
+            "tlsSettings": {
+              "serverName": vlessConfig['sni'],
+              "fingerprint": vlessConfig['fp']
+            },
             "sockopt": {
               "dialerProxy": "proxy3"
             }

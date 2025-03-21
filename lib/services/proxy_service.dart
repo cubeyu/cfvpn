@@ -43,15 +43,27 @@ class ProxyService {
     if (!Platform.isWindows) return;
 
     try {
+      print("禁用系统代理中...");
       // 删除环境变量
       await Process.run(
+        'setx',
+        ['HTTP_PROXY', ''],
+        runInShell: true
+      );
+      await Process.run(
+        'setx',
+        ['HTTPS_PROXY', ''],
+        runInShell: true
+      );
+      // 删除注册表中的环境变量
+      await Process.run(
         'reg',
-        ['delete', 'HKCU\Environment', '/v', 'HTTP_PROXY', '/f'],
+        ['delete', 'HKEY_CURRENT_USER\\Environment', '/v', 'HTTP_PROXY', '/f'],
         runInShell: true
       );
       await Process.run(
         'reg',
-        ['delete', 'HKCU\Environment', '/v', 'HTTPS_PROXY', '/f'],
+        ['delete', 'HKEY_CURRENT_USER\\Environment', '/v', 'HTTPS_PROXY', '/f'],
         runInShell: true
       );
       final key = Registry.openPath(RegistryHive.currentUser, path: _registryPath, desiredAccessRights: AccessRights.allAccess);
