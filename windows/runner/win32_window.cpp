@@ -134,8 +134,8 @@ bool Win32Window::Create(const std::wstring& title,
       WS_OVERLAPPEDWINDOW | WS_VISIBLE,
       origin.x,
       origin.y,
-      700,  // Fixed window width
-      1400,
+      size.width,  // Use original size first
+      size.height, // Use original size first
       nullptr,
       nullptr,
       GetModuleHandle(nullptr),
@@ -143,6 +143,13 @@ bool Win32Window::Create(const std::wstring& title,
   if (!window) {
     return false;
   }
+
+  // Get window DPI and adjust window size
+  double dpi_scale = GetDpiForWindow(window) / 96.0;
+  SetWindowPos(window, nullptr, origin.x, origin.y,
+               Scale(400, dpi_scale),   // Use DPI scaled width
+               Scale(800, dpi_scale),  // Use DPI scaled height
+               SWP_NOZORDER | SWP_NOACTIVATE);
 
   UpdateTheme(window);
 
