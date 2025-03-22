@@ -18,6 +18,7 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
   final _speedController = TextEditingController(text: '1');
   final _testCountController = TextEditingController(text: '50');
   bool _isLoading = false;
+  bool _showTip = false;
 
   @override
   void dispose() {
@@ -37,6 +38,7 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
       
       final shouldContinue = await showDialog<bool>(
         context: context,
+        barrierDismissible: false,
         builder: (context) => AlertDialog(
           title: const Text('警告'),
           content: const Text('测试前需要断开当前连接，是否继续？'),
@@ -60,6 +62,14 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
 
     setState(() {
       _isLoading = true;
+    });
+
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted && _isLoading) {
+        setState(() {
+          _showTip = true;
+        });
+      }
     });
 
     try {
@@ -90,6 +100,7 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _showTip = false;
         });
       }
     }
@@ -159,6 +170,14 @@ class _CloudflareTestDialogState extends State<CloudflareTestDialog> {
             },
           ),
           const SizedBox(height: 16),
+          if (_showTip)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '正在获取节点，请耐心等候...',
+                style: TextStyle(color: Theme.of(context).primaryColor),
+              ),
+            ),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [

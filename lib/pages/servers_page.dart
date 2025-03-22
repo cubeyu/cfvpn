@@ -19,6 +19,7 @@ class ServersPage extends StatefulWidget {
 
 class _ServersPageState extends State<ServersPage> {
   bool _isAscending = true;
+  bool _isLoading = false;
 
   static Future<String> _getExecutablePath() async {
     return V2RayService.getExecutablePath('cftest.exe');
@@ -27,6 +28,7 @@ class _ServersPageState extends State<ServersPage> {
   void _addCloudflareServer(BuildContext context) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('从Cloudflare添加'),
         content: const CloudflareTestDialog(),
@@ -52,108 +54,128 @@ class _ServersPageState extends State<ServersPage> {
         centerTitle: true,
         actions: [
           // 测试延迟按钮
-          IconButton(
-            icon: const Icon(Icons.speed),
-            tooltip: '测试延迟',
-            onPressed: () async {
-              final serverProvider = context.read<ServerProvider>();
-              final connectionProvider = context.read<ConnectionProvider>();
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.speed),
+                tooltip: '测试延迟',
+                onPressed: _isLoading ? null : () async {
+                  final serverProvider = context.read<ServerProvider>();
+                  final connectionProvider = context.read<ConnectionProvider>();
 
-              // 收集所有服务器的IP地址
-              final ips = serverProvider.servers.map((server) => server.ip).join(',');
-              if (ips.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('没有可测试的服务器')),
-                );
-                return;
-              }
+                  // 收集所有服务器的IP地址
+                  final ips = serverProvider.servers.map((server) => server.ip).join(',');
+                  if (ips.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('没有可测试的服务器')),
+                    );
+                    return;
+                  }
 
-              // 检查连接状态
-              if (connectionProvider.isConnected) {
-                final shouldContinue = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('警告'),
-                    content: const Text('测试前需要断开当前连接，是否继续？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('取消'),
+                  // 检查连接状态
+                  if (connectionProvider.isConnected) {
+                    final shouldContinue = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('警告'),
+                        content: const Text('测试前需要断开当前连接，是否继续？'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('取消'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('继续'),
+                          ),
+                        ],
                       ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('继续'),
-                      ),
-                    ],
-                  ),
-                ) ?? false;
+                    ) ?? false;
 
-                if (!shouldContinue) return;
-                await connectionProvider.disconnect();
-              }
+                    if (!shouldContinue) return;
+                    await connectionProvider.disconnect();
+                  }
 
-              try {
-                // 执行测试命令
-                // 获取应用程序的可执行文件目录
-                final exePath = await _getExecutablePath();
-                
-                final process = await Process.start(
-                  exePath,
-                  ['-ip', ips],
-                  workingDirectory: path.dirname(exePath),
-                  mode: ProcessStartMode.inheritStdio,      // 继承标准输入输出
-                );
+                  setState(() {
+                    _isLoading = true;
+                  });
 
-                // 等待进程完成
-                final exitCode = await process.exitCode;
-                if (exitCode != 0) {
-                  throw '测试进程退出，错误代码：$exitCode';
-                }
+                  try {
+                    // 执行测试命令
+                    final exePath = await _getExecutablePath();
+                    
+                    final result = await Process.run(
+                      exePath,
+                      ['-ip', ips, '-tl', '300', '-sl', '0', '-dm', '50'],
+                      workingDirectory: path.dirname(exePath),
+                    );
 
-                // 读取测试结果
-                final resultFile = File(path.join(path.dirname(exePath), 'result.json'));
-                if (!await resultFile.exists()) {
-                  throw '未找到测试结果文件';
-                }
+                    // 检查进程退出码
+                    if (result.exitCode != 0) {
+                      throw '测试进程退出，错误代码：${result.exitCode}';
+                    }
 
-                final String jsonContent = await resultFile.readAsString();
-                final List<dynamic> results = jsonDecode(jsonContent);
+                    // 读取测试结果
+                    final resultFile = File(path.join(path.dirname(exePath), 'result.json'));
+                    if (!await resultFile.exists()) {
+                      throw '未找到测试结果文件';
+                    }
 
-                // 更新服务器延迟
-                for (var result in results) {
-                  final ip = result['ip'];
-                  final delay = result['delay'];
-                  final downloadSpeed = result['downloadSpeed'];
-                  final server = serverProvider.servers.firstWhere(
-                    (server) => server.ip == ip,
-                    orElse: () => ServerModel(
-                      id: '',
-                      name: '',
-                      location: '',
-                      ip: '',
-                      port: 0,
-                    ),
-                  );
-                  if (server.id.isNotEmpty) {
-                    serverProvider.updatePingAndSpeed(server.id, delay, downloadSpeed);
-                    // 如果是当前选中的服务器，更新ConnectionProvider中的数据
-                    if (connectionProvider.currentServer?.id == server.id) {
-                      connectionProvider.setCurrentServer(server);
+                    final String jsonContent = await resultFile.readAsString();
+                    final List<dynamic> results = jsonDecode(jsonContent);
+
+                    // 更新服务器延迟
+                    for (var result in results) {
+                      final ip = result['ip'];
+                      final delay = result['delay'];
+                      final downloadSpeed = result['downloadSpeed'];
+                      final server = serverProvider.servers.firstWhere(
+                        (server) => server.ip == ip,
+                        orElse: () => ServerModel(
+                          id: '',
+                          name: '',
+                          location: '',
+                          ip: '',
+                          port: 0,
+                        ),
+                      );
+                      if (server.id.isNotEmpty) {
+                        serverProvider.updatePingAndSpeed(server.id, delay, downloadSpeed);
+                        // 如果是当前选中的服务器，更新ConnectionProvider中的数据
+                        if (connectionProvider.currentServer?.id == server.id) {
+                          connectionProvider.setCurrentServer(server);
+                        }
+                      }
+                    }
+
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('延迟测试完成')),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('测试失败: $e')),
+                    );
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isLoading = false;
+                      });
                     }
                   }
-                }
-
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('延迟测试完成')),
-                );
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('测试失败: $e')),
-                );
-              }
-            },
+                },
+              ),
+              if (_isLoading)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                  ),
+                ),
+            ],
           ),
           // 排序按钮
           IconButton(

@@ -32,19 +32,14 @@ class CloudflareTestService {
     }
 
     try {
-      final process = await Process.start(
+      final result = await Process.run(
         exePath,
         ['-f', ipFilePath, '-cfcolo', location, '-dn', '$count', '-tl', '$maxLatency', '-sl', '$speed', '-dm', '$testCount'],
         workingDirectory: path.dirname(exePath),  // 设置工作目录
-        mode: ProcessStartMode.inheritStdio,      // 继承标准输入输出
       );
 
-      // 等待进程完成
-      final exitCode = await process.exitCode;
-      // print('Process exit code: $exitCode');
-
-      if (exitCode != 0) {
-        throw 'Process exited with code $exitCode';
+      if (result.exitCode != 0) {
+        throw 'Process exited with code ${result.exitCode}';
       }
 
       // 读取结果文件
